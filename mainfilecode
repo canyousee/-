@@ -1,0 +1,245 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<math.h>
+#include<filesystem>
+#include <windows.h>
+#include"HXMBMPFILE.h"
+#define PI 3.1415926
+//void getdata(HXLMBMPFILE *b, float *c);//得到原始直方图数据 
+//void dataequal(HXLMBMPFILE *b, float *c, float *d, float *e);//得到均衡化的数据
+int main(int argc, char* argv[])
+{
+	HXLBMPFILE bmpfile; int i, j, v;
+	if (!bmpfile.LoadBMPFILE("11.bmp")) return 1;
+	// do other processig with the imagedata//
+	HXLBMPFILE bf;
+	bf.imagew = bmpfile.imagew;
+	bf.imageh = bmpfile.imageh;
+	bf.iYRGBnum = bmpfile.iYRGBnum;
+
+	if (!bf.AllocateMem()) return 1;
+
+	for (i = 0; i < bmpfile.imageh - 1; i++)
+	{
+		for (j = 0; j < bmpfile.imagew - 1; j++)
+		{
+			bf.pDataAt(i)[j] = bmpfile.pDataAt(i)[j];
+		}
+	}
+	float aa[256], bb[256], cc[256];
+	//dataequal(&bmpfile, aa, bb, cc);
+	int i1 = 0, j1 = 0;
+	int total = bmpfile.imageh*bmpfile.imagew;
+	memset(bb, 0, 256 * sizeof(float));
+	memset(cc, 0, 256 * sizeof(float));
+	int x = 0;
+	int y = 0;
+	memset(aa, 0, 256 * sizeof(float));
+	for (x = 0; x < bmpfile.imageh; x++)
+	{
+		for (y = 0; y< bmpfile.imagew; y++)
+		{
+			aa[bmpfile.pDataAt(x)[y]] += 1.0;
+		}
+	}
+	for (i = 0; i < 256; i++)
+	{
+		aa[i] /= (float)total;
+	}
+	bb[0] = aa[0];
+	for (i1 = 1; i1 < 256; i1++)
+	{
+		bb[i1] = aa[i1] + bb[i1 - 1];
+	}
+
+	for (i1 = 0; i1 < 256; i1++)
+	{
+		cc[i1] = int(255 * bb[i1] + 0.5);
+	}
+	FILE *f;
+	f = fopen("1.txt", "w+");
+	if (f == NULL)
+	{
+		return 0;
+	}
+	for (i = 0; i < 256; i++)
+	{
+		fprintf(f, "%f\n", aa[i]);
+	}
+	fclose(f);
+	f = fopen("2.txt", "w+");
+	if (f == NULL)
+	{
+		return 0;
+	}
+	for (i = 0; i < 256; i++)
+	{
+		fprintf(f, "%f\n", cc[i]);
+	}
+	fclose(f);
+	for (i = 0; i < bf.imageh; i++)
+	{
+		for (j = 0; j < bf.imagew; j++)
+		{
+			bf.pDataAt(i)[j] = cc[bmpfile.pDataAt(i)[j]];
+		}
+	}
+	bf.SaveBMPFILE("2.bmp");
+	//getdata(&bf, aa)
+	int i2 = 0;
+	int j2 = 0;
+	int totalss = bf.imageh*bf.imagew;
+	memset(aa, 0, 256 * sizeof(float));
+	for (i2 = 0; i2 < bf.imageh; i2++)
+	{
+		for (j2 = 0; j2< bf.imagew; j2++)
+		{
+			aa[bf.pDataAt(i2)[j2]] += 1.0;
+		}
+	}
+	for (i2 = 0; i2 < 256; i2++)
+	{
+		aa[i2] /= (float)totalss;
+	}
+	f = fopen("3.txt", "w+");
+	for (i = 0; i < 256; i++)
+	{
+		fprintf(f, "%f\n", aa[i]);
+	}
+	fclose(f);
+	//以下是规定化直方图
+	float dd[256];
+	for (i = 0; i < 256; i++)
+	{
+		dd[i] = 0.5*sin((PI / 256.0)*i)*(PI / 256.0);
+	}
+	f = fopen("4.txt", "w+");
+	if (f == NULL)
+	{
+		return 0;
+	}
+	for (i = 0; i < 256; i++)
+	{
+		fprintf(f, "%f\n", dd[i]);
+	}
+	fclose(f);
+	float ee[256];
+	ee[0] = dd[0];
+	for (i = 1; i < 256; i++)
+	{
+		ee[i] = ee[i - 1] + dd[i];
+	}
+	f = fopen("5.txt", "w+");
+	if (f == NULL)
+	{
+		return 0;
+	}
+	for (i = 0; i < 256; i++)
+	{
+		fprintf(f, "%f\n", ee[i]);
+	}
+	fclose(f);
+	float min;
+	int ff[256] = { 0 };
+	for (i = 0; i < 256; i++)
+	{
+		min = abs(bb[i] - ee[0]);
+		for (j = 0; j < 256; j++)
+		{
+			if (abs(bb[i] - ee[j]) <= min)
+			{
+				min = abs(bb[i] - ee[j]);
+				if (abs(bb[i] - ee[j + 1]) >= min&&j != 255)
+				{
+					ff[i] = j;
+					break;
+				}
+			}
+		}
+		if (min = abs(bb[i] - ee[0]))
+			ff[i] = 0;
+	}
+	f = fopen("6.txt", "w+");
+	if (f == NULL)
+	{
+		return 0;
+	}
+	for (i = 0; i < 256; i++)
+	{
+		fprintf(f, "%d\n", ff[i]);
+	}
+	fclose(f);
+	for (i = 0; i < bf.imageh; i++)
+	{
+		for (j = 0; j < bf.imagew; j++)
+		{
+			bf.pDataAt(i)[j] = ff[bmpfile.pDataAt(i)[j]];
+		}
+	}
+	bf.SaveBMPFILE("3.bmp");
+	//getdata(&bf, aa);
+	//int i = 0;
+	//int j = 0;
+	int totals = bf.imageh*bf.imagew;
+	//memset(aa, 0, 256 * sizeof(float));
+	for (i = 0; i < bf.imageh; i++)
+	{
+		for (j = 0; j < bf.imagew; j++)
+		{
+			aa[bf.pDataAt(i)[j]] += 1.0;
+		}
+	}
+	for (i = 0; i < 256; i++)
+	{
+		aa[i] /= (float)totals;
+	}
+	f = fopen("7.txt", "w+");
+	if (f == NULL)
+	{
+		return 0;
+	}
+	for (i = 0; i < 256; i++)
+	{
+		fprintf(f, "%f\n", aa[i]);
+	}
+	fclose(f);
+	printf("program eds!\n");
+	return 0;
+}
+
+/*void getdata(HXLMBMPFILE *b, float *c)
+{
+int i = 0;
+int j = 0;
+int total = b->imageh*b->imagew;
+memset(c, 0, 256 * sizeof(float));
+for (i = 0; i < b->imageh; i++)
+{
+for (j = 0; j < b->imagew; j++)
+{
+c[b->pDataAt(i)[j]] += 1.0;
+}
+}
+for (i = 0; i < 256; i++)
+{
+c[i] /= (float)total;
+}
+}//得到原始直方图数据
+void dataequal(HXLMBMPFILE *b, float *c, float *d, float *e)//得到均衡化的数据
+{
+int i = 0, j = 0;
+int total = b->imageh*b->imagew;
+memset(d, 0, 256 * sizeof(float));
+memset(e, 0, 256 * sizeof(float));
+getdata(b, c);
+d[0] = c[0];
+for (i = 1; i < 256; i++)
+{
+d[i] = c[i] + d[i - 1];
+}
+
+for (i = 0; i < 256; i++)
+{
+e[i] = int(255 * d[i] + 0.5);
+}
+}*/
